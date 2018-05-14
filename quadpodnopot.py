@@ -276,7 +276,7 @@ while True:
         val = 0
             #not actual procedure! waiting on LA. currently counts to 60 on the disp then moves to next state
         if str(digit()) == '#':
-            bus.write_word_data(addr, 0x08, 1265)
+            bus.write_word_data(addr, 0x08, 1250)
             while abs(round(val,4)) < 1000:
                 lcd.clear()
                 val = hx.get_weight(5)
@@ -293,6 +293,7 @@ while True:
             digit()
             lcd.clear()
             lcd.message("Press # to\ntest sample")
+            time.sleep(1)
             if str(digit()) == '#':
                 menustate ='testing'
                 testprepiter = 0
@@ -301,12 +302,12 @@ while True:
     while menustate == 'testing':
         print('test active!')
         lcd.clear()
-        lcd.message('Test commencing...\nPress 0 to end')
+        lcd.message('Test commencing...\nPress * to end')
         time.sleep(1)
         load = 0
         testiter = 0
         maxload = -400
-        bus.write_word_data(addr, 0x08, 1265)
+        bus.write_word_data(addr, 0x08, 1250)
         GPIO.setup(19, GPIO.OUT)
         GPIO.output(19, GPIO.LOW)
 
