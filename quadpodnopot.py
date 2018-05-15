@@ -15,30 +15,26 @@ DEBUG = 1
 #LCD init
 import Adafruit_CharLCD as LCD
 lcd = LCD.Adafruit_CharLCDPlate()
-# Make list of button value, text
-buttons = ( (LCD.SELECT, 'Select'),
-            (LCD.LEFT,   'Left'),
-            (LCD.UP,     'Up'),
-            (LCD.DOWN,   'Down'),
-            (LCD.RIGHT,  'Right') )
-
 lcd.message('loading')
 manualmsg = '1/2 up,7/8 down\n# to exit'
 
 
 #Menu system init
-menu_items = ('Manual Adjust', 'Uplift Test', 'Change ID', 'Options')
+menu_items = ('Manual Adjust', 'Uplift Test', 'Change ID', 'Options', 'Speed Test')
 menu_iter = 0
 menu_items_options = ('A', 'B', 'C', 'D', 'Back')
 options_iter = 0
+speedtest_iter = 0
+speedtest_items = ('Neutral Adjust', 'Slow Adjust')
 menustate = 'main'
 dblproc = False
+speededit = None
 
 #logging init
 userid = 'None'
 path = '/quadpod/log files/'
 testprepiter = 0
-usbpath = '/media/pi/ESD-USB/qpd'
+#usbpath = '/media/pi/ESD-USB/qpd'
 dircon = 0
 
 #Load cell init
@@ -146,7 +142,7 @@ while True:
         if str(digit()) =='#':
             if menu_iter == 0:
                 menustate = 'manual'
-                lcd.clear()##1234567890123456
+                lcd.clear()
                 lcd.message(manualmsg)
             elif menu_iter == 1:
                 menustate = 'logging1'
@@ -159,6 +155,11 @@ while True:
                     lcd.message('Pounds or Kilos?\n^^^^^^')
                 if mass_unit == 'kg':
                     lcd.message('Pounds or Kilos?\n          ^^^^^^')
+            elif menu_iter == 4:
+                menustate = 'speedtest'
+                lcd.clear()
+                lcd.message('Speed Adjust\n1 to inc, 7 to dec')
+                time.sleep(0.5)
             time.sleep(0.25)
     while menustate == 'manual':
         if str(digit()) == '1':
@@ -179,6 +180,16 @@ while True:
         elif str(digit()) == '8':
             print('going down medium')
             bus.write_word_data(addr, 0x08, basespeed + medspeed)  # chl 0 end time = 1.0ms
+            time.sleep(2)
+            bus.write_word_data(addr, 0x08, basespeed)  # chl 0 end time = 2.0ms
+        elif str(digit()) == '3':
+            print('going up slow')
+            bus.write_word_data(addr, 0x08, basespeed - slowspeed)  # chl 0 end time = 1.0ms
+            time.sleep(2)
+            bus.write_word_data(addr, 0x08, basespeed)  # chl 0 end time = 2.0ms
+        elif str(digit()) == '9':
+            print('going down slow')
+            bus.write_word_data(addr, 0x08, basespeed + slowspeed)  # chl 0 end time = 1.0ms
             time.sleep(2)
             bus.write_word_data(addr, 0x08, basespeed)  # chl 0 end time = 2.0ms 
         elif str(digit()) == '#':
@@ -223,39 +234,11 @@ while True:
             tstno = ts1 + ts2 + ts3
             lcd.clear()
             lcd.message('Bldg no:' + str(bldg) + '\nTest no:' + str(tstno))
-##        else: #please clean this up eventually
-##            lcd.message('ID is ' + str(userid) + '\nEnter test num.')
-##            filename = '******'
-##            fn1 = str(numeral())
-##            filename = fn1 + '*****'
-##            lcd.clear()
-##            lcd.message('Filename\n  ' + str(filename))
-##            time.sleep(0.25)
-##            fn2 = str(numeral())
-##            filename = fn1 + fn2 + '****'
-##            lcd.clear()
-##            lcd.message('Filename\n  ' + str(filename))
-##            time.sleep(0.25)
-##            fn3 = str(numeral())
-##            filename = fn1 + fn2 + fn3 + '***'
-##            lcd.clear()
-##            lcd.message('Filename\n  ' + str(filename))
-##            time.sleep(0.25)
-##            fn4 = str(numeral())
-##            filename = fn1 + fn2 + fn3 + fn4 + '**'
-##            lcd.clear()
-##            lcd.message('Filename\n  ' + str(filename))
-##            time.sleep(0.25)
-##            fn5 = str(numeral())
-##            filename = fn1 + fn2 + fn3 + fn4 + fn5 + '*'
-##            lcd.clear()
-##            lcd.message('Filename\n  ' + str(filename))
-##            time.sleep(0.25)
-##            fn6 = str(numeral())
-##            filename = fn1 + fn2 + fn3 + fn4 + fn5 + fn6
-##            lcd.clear()
-##            lcd.message('Your test # is\n  ' + str(filename))
+
             time.sleep(1)
+            
+            lcd.clear()
+            lcd.message(str(bldg) + '-' + str(tstno) + ' Confirm?\npush #. Reject *')
             if str(digit())== '#':
                 lcd.clear()
                 lcd.message('Creating file...')
@@ -270,23 +253,23 @@ while True:
                 menustate = 'testprep'
                 lcd.clear()
                 lcd.message('Press # to\nload to 10lb')
-            
+            elif str(digit()) == '*':
+                menustate = 'main'
+                lcd.clear()
+                lcd.message('Main Menu\n'+ menu_items[menu_iter])
+                
     while menustate == 'testprep':
         time.sleep(0.1)
         val = 0
-            #not actual procedure! waiting on LA. currently counts to 60 on the disp then moves to next state
         if str(digit()) == '#':
-            bus.write_word_data(addr, 0x08, 1250)
+            bus.write_word_data(addr, 0x08, basespeed - slowspeed)
             while abs(round(val,4)) < 1000:
                 lcd.clear()
                 val = hx.get_weight(5)
                 print round(val,4)
-                hx.power_down()
-                hx.power_up()
-                #logfile.write(str(testprepiter) + "," + str(RCtime(24))+',' + str(round(val,4))+'\n')
-                #testprepiter = testprepiter + 1
+                hx.reset()
                 #print(RCtime(21))
-            bus.write_word_data(addr, 0x08, 1300)
+            bus.write_word_data(addr, 0x08, basespeed)
             lcd.message("Loaded at\n" + str(round(val,4) / 100))
             print('succ')
             time.sleep(1.3)
@@ -296,7 +279,6 @@ while True:
             time.sleep(1)
             if str(digit()) == '#':
                 menustate ='testing'
-                testprepiter = 0
         
             
     while menustate == 'testing':
@@ -307,7 +289,7 @@ while True:
         load = 0
         testiter = 0
         maxload = -400
-        bus.write_word_data(addr, 0x08, 1250)
+        bus.write_word_data(addr, 0x08, basespeed - slowspeed)
         GPIO.setup(19, GPIO.OUT)
         GPIO.output(19, GPIO.LOW)
 
@@ -317,8 +299,7 @@ while True:
 
         while testactive == True:
             val = hx.get_weight(5)
-            hx.power_down()
-            hx.power_up()
+            hx.reset()
             #logfile.write(str(testprepiter) + "," + str(RCtime(21))+',' + str(round(val,4))+'\n')
             logfile.write(str(testprepiter) + "," + str(1)+',' + str(round(val,4))+'\n')
             testprepiter = testprepiter + 1
@@ -328,9 +309,9 @@ while True:
             print('max load in test' + str(maxload))
             testiter = testiter + 1
             print(str(testiter) + 'test iter') 
-            if testiter % 5 == 0:
+            if testiter % 3 == 0:
                 lcd.clear()
-                lcd.message('Max Load:' + str(maxload) + '\nLoad: ' +  str(round(val,4)))
+                lcd.message('Max Load:' + str(round(maxload / 100,2)) + '\nLoad: ' +  str(round(val / 100,2)))
             tmpRead = GPIO.input(16)
             if str(tmpRead) == "0":
                 testactive = False
@@ -342,11 +323,11 @@ while True:
             #end test condition: 30% drop in load. stack 6 values, median top and bottom 3,
             #then end test if 30% drop?
             #then testactive == False
-        bus.write_word_data(addr, 0x08, 1300)
+        bus.write_word_data(addr, 0x08, basespeed)
         menustate = 'posttest'
     while menustate == 'posttest':
         lcd.clear()
-        lcd.message('Test complete.\nMax load: '+ str(maxload / 100))
+        lcd.message('Test complete.\nMax load: '+ str(round(maxload / 100,2)))
         time.sleep(5)
         digit()
         lcd.clear()
@@ -354,7 +335,7 @@ while True:
 ##        time.sleep(2)
 ##        digit()
 ##        lcd.clear()
-        lcd.message('Press #: menu\nMax:' + str(maxload / 100))
+        lcd.message('Press #: menu\nMax:' + str(round(maxload / 100,2)))
         time.sleep(2)
         if digit() == '#':
             menustate = 'manual'
@@ -423,6 +404,46 @@ while True:
             lcd.clear()
             lcd.message('Main Menu\n'+ menu_items[menu_iter])
             time.sleep(0.25)
+    while menustate == 'speedtest':
+        if str(digit()) =='0':
+            lcd.clear()
+            lcd.message('Neutral Speed\n' + str(basespeed))
+            speededit = 'neutral'
+            time.sleep(0.7)
+        if str(digit()) == '1':
+            if speededit == 'neutral':
+                basespeed = basespeed + 5
+                bus.write_word_data(addr, 0x08, basespeed)
+                lcd.clear()
+                lcd.message('Neutral Speed\n' + str(basespeed))
+            elif speededit == 'slow':
+                slowspeed = slowspeed + 2
+                lcd.clear()
+                lcd.message('Testing Speed\n' + str(slowspeed))
+            time.sleep(0.7)
+        if str(digit()) == '8':
+            lcd.clear()
+            lcd.message('Testing Speed\n' + str(slowspeed))
+            speededit = 'slow'
+            time.sleep(0.7)
+        if str(digit()) == '7':
+            if speededit == 'neutral':
+                basespeed = basespeed - 5
+                bus.write_word_data(addr, 0x08, basespeed)
+                lcd.clear()
+                lcd.message('Neutral Speed\n' + str(basespeed))
+            elif speededit == 'slow':
+                slowspeed = slowspeed - 2
+                lcd.clear()
+                lcd.message('Testing Speed\n' + str(slowspeed))
+            time.sleep(0.7)
+        if str(digit()) == '#':
+            speededit = None
+            menustate = 'main'
+            lcd.clear()
+            lcd.message('Main Menu\n'+ menu_items[menu_iter])
+            time.sleep(0.25)
+            
 #            if options_iter == 4:
 #                options_iter = 0
 #                menu_iter = 0 
@@ -430,10 +451,3 @@ while True:
 #                lcd.message('Main Menu\n'+ menu_items[menu_iter])
 #                menustate = 'main'
 #                time.sleep(0.5)
-##while True:
-    # Loop through each button and check if it is pressed.
-  #  for button in buttons:
-   #     if lcd.is_pressed(button[0]):
-    #        # Button is pressed, change the message and backlight.
-     #       lcd.clear()
-      #      lcd.message(button[1])
