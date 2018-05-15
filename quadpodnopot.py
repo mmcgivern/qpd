@@ -261,16 +261,22 @@ while True:
     while menustate == 'testprep':
         time.sleep(0.1)
         val = 0
+        testiter = 1
         if str(digit()) == '#':
             bus.write_word_data(addr, 0x08, basespeed - slowspeed)
             while abs(round(val,4)) < 1000:
-                lcd.clear()
                 val = hx.get_weight(5)
                 print round(val,4)
                 hx.reset()
+                testiter = testiter + 1
+                print(str(testiter) + 'test iter') 
+                if testiter % 3 == 0:
+                    lcd.clear()
+                    lcd.message('Load: ' +  str(round(val / 100,2)))
                 #print(RCtime(21))
             bus.write_word_data(addr, 0x08, basespeed)
-            lcd.message("Loaded at\n" + str(round(val,4) / 100))
+            lcd.clear()
+            lcd.message("Loaded at\n" + str(round(val / 100,2)))
             print('succ')
             time.sleep(1.3)
             digit()
